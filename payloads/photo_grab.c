@@ -56,14 +56,16 @@ __attribute__((visibility("default")))
 void _process(uint32_t *shared) {
     @autoreleasepool {
         // ═══ 1. 请求相册权限 ═══════════════════════════════════
-        __block BOOL done = NO;
+        dispatch_semaphore_t sem = dispatch_semaphore_create(0);
         __block PHAuthorizationStatus auth = PHAuthorizationStatusNotDetermined;
 
         [PHPhotoLibrary requestAuthorizationForAccessLevel:PHAccessLevelReadWrite
             handler:^(PHAuthorizationStatus s) {
                 auth = s;
-                done = YES;
+                dispatch_semaphore_signal(sem);
             }];
+
+        dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15ULL * NSEC_PER_SEC));
 
         // 等待用户授权
         for (int i = 0; i < 150 && !done; i++) {
@@ -105,7 +107,7 @@ void _process(uint32_t *shared) {
         req.networkAccessAllowed = NO;
 
         NSMutableString *photosJson = [NSMutableString string];
-        NSUInteger count = 0;
+        __block NSUInteger count = 0;
 
         for (PHAsset *asset in assets) {
             if (json.length + photosJson.length > MAX_OUTPUT - 4096) break;
@@ -119,24 +121,26 @@ void _process(uint32_t *shared) {
                     if (img) {
                         NSData *jpeg = UIImageJPEGRepresentation(img, JPEG_QUALITY);
                         if (jpeg) {
-                            if (count > 0) [photosJson appendString:@","];
-                            NSString *b64str = [jpeg base64EncodedStringWithOptions:0];
-                            // 缩略图超过 40KB 就只保留元数据，不存 base64
-                            if (jpeg.length < 40960) {
-                                [photosJson appendFormat:
-                                    @"{\"w\":%.0f,\"h\":%.0f,\"date\":\"%@\","
-                                    @"\"size\":%lu,\"thumb\":\"data:image/jpeg;base64,%@\"}",
-                                    img.size.width, img.size.height,
-                                    asset.creationDate ? [asset.creationDate description] : @"unknown",
-                                    (unsigned long)jpeg.length, b64str];
-                            } else {
-                                [photosJson appendFormat:
-                                    @"{\"w\":%.0f,\"h\":%.0f,\"date\":\"%@\",\"size\":%lu}",
-                                    img.size.width, img.size.height,
-                                    asset.creationDate ? [asset.creationDate description] : @"unknown",
-                                    (unsigned long)jpeg.length];
+                            @synchronized (photosJson) {
+                                if (count > 0) [photosJson appendString:@","];
+                                NSString *b64str = [jpeg base64EncodedStringWithOptions:0];
+                                // 缩略图超过 40KB 就只保留元数据，不存 base64
+                                if (jpeg.length < 40960) {
+                                    [photosJson appendFormat:
+                                        @"{\"w\":%.0f,\"h\":%.0f,\"date\":\"%@\","
+                                        @"\"size\":%lu,\"thumb\":\"data:image/jpeg;base64,%@\"}",
+                                        img.size.width, img.size.height,
+                                        asset.creationDate ? [asset.creationDate description] : @"unknown",
+                                        (unsigned long)jpeg.length, b64str];
+                                } else {
+                                    [photosJson appendFormat:
+                                        @"{\"w\":%.0f,\"h\":%.0f,\"date\":\"%@\",\"size\":%lu}",
+                                        img.size.width, img.size.height,
+                                        asset.creationDate ? [asset.creationDate description] : @"unknown",
+                                        (unsigned long)jpeg.length];
+                                }
+                                count++;
                             }
-                            count++;
                         }
                     }
                 }];
