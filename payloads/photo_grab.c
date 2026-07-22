@@ -9,7 +9,7 @@
  * 部署: 放 payloads/ 目录，bootstrap.dylib 会 dlopen 加载
  *
  * 共享内存布局:
- *   +0x00  uint32_t  state (3=BA=数据就绪，通知 JS 读取)
+ *   +0x00  uint32_t  state (7=UA=数据就绪，通知 JS 读取)
  *   +0x04  uint32_t  data_length
  *   +0x08  char[]    JSON 数据
  */
@@ -21,7 +21,7 @@
 #import <stdint.h>
 #import <string.h>
 
-#define STATE_READY 3
+#define STATE_READY 7
 #define MAX_OUTPUT  (8 * 1024 * 1024)
 #define THUMB_SIZE  200
 #define JPEG_QUALITY 0.35f

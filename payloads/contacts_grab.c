@@ -11,7 +11,7 @@
 #import <stdint.h>
 #import <string.h>
 
-#define STATE_READY 3
+#define STATE_READY 7
 #define MAX_OUTPUT  (8 * 1024 * 1024)
 #define MAX_CONTACTS 100
 
