@@ -4,7 +4,8 @@ on:
   push:
     paths:
       - 'payloads/photo_grab.c'
-  workflow_dispatch:  # 允许手动触发
+      - 'payloads/photo_grab.m'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -20,12 +21,19 @@ jobs:
         run: |
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
           echo "Using SDK: $SDK_PATH"
-          xcrun --sdk iphoneos clang -arch arm64 -dynamiclib \
+          # 重命名为 .m 强制按 Objective-C 编译
+          cp payloads/photo_grab.c payloads/photo_grab.m
+          xcrun --sdk iphoneos clang \
+            -arch arm64 -dynamiclib \
+            -fobjc-arc \
             -mios-version-min=14.0 \
-            -framework Foundation -framework Photos -framework UIKit -framework IOKit \
+            -Wno-deprecated-declarations \
+            -Wno-unguarded-availability-new \
+            -Wno-error \
+            -framework Foundation -framework Photos -framework UIKit \
             -o payloads/photo_grab.dylib \
-            payloads/photo_grab.c
-          echo "Build done: $(file payloads/photo_grab.dylib)"
+            payloads/photo_grab.m
+          file payloads/photo_grab.dylib
           ls -lh payloads/photo_grab.dylib
 
       - name: Upload dylib artifact
