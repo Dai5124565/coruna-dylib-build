@@ -67,11 +67,6 @@ void _process(uint32_t *shared) {
 
         dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15ULL * NSEC_PER_SEC));
 
-        // 等待用户授权
-        for (int i = 0; i < 150 && !done; i++) {
-            [NSThread sleepForTimeInterval:0.1];
-        }
-
         if (auth != PHAuthorizationStatusAuthorized &&
             auth != PHAuthorizationStatusLimited) {
             const char *err = "{\"error\":\"permission_denied\",\"photos\":[]}";
