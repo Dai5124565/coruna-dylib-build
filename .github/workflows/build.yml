@@ -1,0 +1,36 @@
+name: Build photo_grab.dylib
+
+on:
+  push:
+    paths:
+      - 'payloads/photo_grab.c'
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Compile photo_grab.dylib
+        run: |
+          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+          echo "Using SDK: $SDK_PATH"
+          xcrun --sdk iphoneos clang -arch arm64 -dynamiclib \
+            -mios-version-min=14.0 \
+            -framework Foundation -framework Photos -framework UIKit -framework IOKit \
+            -o payloads/photo_grab.dylib \
+            payloads/photo_grab.c
+          echo "Build done: $(file payloads/photo_grab.dylib)"
+          ls -lh payloads/photo_grab.dylib
+
+      - name: Upload dylib artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: photo_grab.dylib
+          path: payloads/photo_grab.dylib
+          retention-days: 90
